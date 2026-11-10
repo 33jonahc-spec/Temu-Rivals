@@ -235,12 +235,15 @@ function makeRoom(code,host){
    c.on('data',d=>{st.remote=d;notify()});
    c.on('close',()=>{st.remote=null;notify()});c.on('error',()=>{})};
   peer.on('error',e=>{if(!st.done){st.done=true;clearInterval(tm);reject(e)}});
+  setTimeout(()=>{if(!st.done){st.done=true;clearInterval(tm);try{peer.destroy()}catch(e){}
+   reject({message:'timed out',hint:st.broker
+    ?'reached the match server but couldn\u2019t link up with the other player. Check the code and that the host\u2019s tab is still open. If you are both on school or work Wi-Fi, that network is probably blocking peer-to-peer connections, so try a phone hotspot or home Wi-Fi.'
+    :'couldn\u2019t reach the match server (0.peerjs.com). This network or browser is probably blocking it, so try a phone hotspot or home Wi-Fi.'})}},15000);
   if(host){
-   peer.on('open',()=>{st.done=true;resolve(api)});
+   peer.on('open',()=>{st.broker=true;st.done=true;resolve(api)});
    peer.on('connection',c=>{if(st.conn&&st.conn.open){c.close();return}setup(c)});
   }else{
-   peer.on('open',()=>setup(peer.connect(id,{reliable:true,serialization:'json'})));
-   setTimeout(()=>{if(!st.done){st.done=true;clearInterval(tm);try{peer.destroy()}catch(e){}reject({message:'timed out'})}},12000);
+   peer.on('open',()=>{st.broker=true;setup(peer.connect(id,{reliable:true,serialization:'json'}))});
   }
  })}
 async function mpConnect(code,side,mine){
@@ -258,7 +261,7 @@ async function mpConnect(code,side,mine){
    if(!op){seen=null;mpStarts=0;mpReady=0;if(state==='play'){state='menu';$('menu').style.display='flex';msg('Opponent left',2000)}}
    refreshPlay()});
   refreshPlay();
- }catch(e){st.textContent=(e&&e.type==='peer-unavailable'?'No match found with that code. Check it and try again.':'Couldn’t connect ('+((e&&(e.type||e.message))||'error')+'). Try again.')}}
+ }catch(e){st.textContent=(e&&e.type==='peer-unavailable'?'No match found with that code. Check it and try again.':'Couldn’t connect: '+((e&&(e.hint||e.type||e.message))||'error'))}}
 $('mk').onclick=()=>mpConnect(rcode(),1,true);
 $('jn').onclick=()=>{const c=$('code').value.trim().toLowerCase().replace(/[^a-z0-9]/g,'');if(c.length<4){$('mpstat').textContent='Enter the match code your friend gave you.';return}mpConnect(c,-1,false)};
 requestAnimationFrame(loop);
